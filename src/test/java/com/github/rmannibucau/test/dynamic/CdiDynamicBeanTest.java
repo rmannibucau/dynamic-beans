@@ -8,6 +8,7 @@ import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
@@ -37,6 +38,8 @@ public class CdiDynamicBeanTest {
         return ShrinkWrap.create(WebArchive.class, "config.war")
                 .addPackages(true, "com.github.rmannibucau.dynamic")
                 .addAsServiceProvider(NamespaceHandler.class, DynamicHandler.class)
+                .addAsWebInfResource(EmptyAsset.INSTANCE, "beans.xml")
+                .addClass(ABean.class)
                 .addAsWebInfResource(new StringAsset("<cdi-beans xmlns:dynamic=\"cdi://dynamic\">" +
                     "  <dynamic:dynamicBean api=\"" + CdiDynamic.class.getName() + "\" timeout=\"500\" path=\"" + DYNAMIC_FILE.getAbsolutePath() + "\"/>" +
                     "</cdi-beans>"), "classes/cdi-configuration.xml")
@@ -52,15 +55,18 @@ public class CdiDynamicBeanTest {
         assertEquals("dynamic", dynamic.getInit());
 
         write(DYNAMIC_FILE, "class DynamicImpl implements com.github.rmannibucau.test.dynamic.CdiDynamicBeanTest.CdiDynamic {\n" +
+            "    @javax.inject.Inject\n" +
+            "    com.github.rmannibucau.test.dynamic.CdiDynamicBeanTest.ABean bean\n" +
+            "    \n" +
             "    String init\n" +
             "    \n" +
             "    @javax.annotation.PostConstruct\n" +
             "    public void init() {\n" +
-            "        init = \"re-dynamic\"\n" +
+            "        init = bean.toString() + \"-re-dynamic\"\n" +
             "    }\n" +
             "}\n");
         Thread.sleep(1000);
-        assertEquals("re-dynamic", dynamic.getInit());
+        assertEquals("ABean-re-dynamic", dynamic.getInit());
     }
 
     private static void write(final File updated, final String value) throws IOException {
@@ -71,5 +77,12 @@ public class CdiDynamicBeanTest {
 
     public static interface CdiDynamic {
         String getInit();
+    }
+
+    public static class ABean {
+        @Override
+        public String toString() {
+            return "ABean";
+        }
     }
 }

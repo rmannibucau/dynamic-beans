@@ -16,6 +16,7 @@ public class CdiFactory implements InstanceFactory {
         final InjectionTarget it = beanManager.createInjectionTarget(at);
         final CreationalContext cc = beanManager.createCreationalContext(null);
         final Object instance = it.produce(cc);
+        it.inject(instance, cc);
         it.postConstruct(instance);
         return new CdiInstanceHolder(instance, cc, it);
     }
