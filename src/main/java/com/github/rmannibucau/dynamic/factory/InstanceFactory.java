@@ -1,4 +1,4 @@
-package com.github.rmannibucau.dynamic;
+package com.github.rmannibucau.dynamic.factory;
 
 public interface InstanceFactory {
     InstanceHolder newInstance(Class<?> clazz);

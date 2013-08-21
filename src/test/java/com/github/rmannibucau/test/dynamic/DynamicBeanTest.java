@@ -1,6 +1,6 @@
 package com.github.rmannibucau.test.dynamic;
 
-import com.github.rmannibucau.dynamic.DynamicBean;
+import com.github.rmannibucau.dynamic.factory.DynamicBean;
 import org.junit.Test;
 
 import java.io.File;

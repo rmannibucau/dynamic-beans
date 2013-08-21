@@ -1,4 +1,4 @@
-package com.github.rmannibucau.dynamic;
+package com.github.rmannibucau.dynamic.factory;
 
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyCodeSource;
@@ -53,6 +53,15 @@ public abstract class DynamicBean {
 
         @Override
         public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
+            if (Object.class.equals(method.getDeclaringClass())) {
+                if ("hashCode".equals(method.getName())) {
+                    return hashCode();
+                }
+                if ("equals".equals(method.getName())) {
+                    return args[0] != null && Proxy.isProxyClass(args[0].getClass()) && equals(Proxy.getInvocationHandler(args[0]));
+                }
+            }
+
             if (Closeable.class.equals(method.getDeclaringClass())) {
                 if (delegate != null) {
                     factory.destroyInstance(delegate);
@@ -64,28 +73,26 @@ public abstract class DynamicBean {
                 synchronized (this) {
                     final long now = System.currentTimeMillis();
                     if (now - lastUpdate > timeout) {
-                        clazz = loader.parseClass(new GroovyCodeSource(findResource()), timeout <= 0);
+                        createDelegate();
                         lastUpdate = now;
-
-                        if (factory != null) {
-                            if (delegate != null) {
-                                factory.destroyInstance(delegate);
-                            }
-                            delegate = factory.newInstance(clazz);
-                        } else {
-                            final Object instance = clazz.newInstance();
-                            delegate = new InstanceFactory.InstanceHolder() {
-                                @Override
-                                public Object getInstance() {
-                                    return instance;
-                                }
-                            };
-                        }
                     }
                 }
             }
 
             return method.invoke(delegate.getInstance(), args);
+        }
+
+        private void createDelegate() throws IOException, InstantiationException, IllegalAccessException {
+            clazz = loader.parseClass(new GroovyCodeSource(findResource()), timeout <= 0);
+
+            if (factory != null) {
+                if (delegate != null) {
+                    factory.destroyInstance(delegate);
+                }
+                delegate = factory.newInstance(clazz);
+            } else {
+                delegate = new DirectInstanceHolder(clazz.newInstance());
+            }
         }
 
         private URL findResource() {
@@ -98,6 +105,19 @@ public abstract class DynamicBean {
                 }
             }
             return loader.getResource(path);
+        }
+    }
+
+    private static class DirectInstanceHolder implements InstanceFactory.InstanceHolder {
+        private final Object instance;
+
+        public DirectInstanceHolder(final Object instance) {
+            this.instance = instance;
+        }
+
+        @Override
+        public Object getInstance() {
+            return instance;
         }
     }
 }

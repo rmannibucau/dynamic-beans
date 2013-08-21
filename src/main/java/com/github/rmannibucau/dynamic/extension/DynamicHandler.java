@@ -1,19 +1,15 @@
-package com.github.rmannibucau.dynamic.configuration;
+package com.github.rmannibucau.dynamic.extension;
 
 import com.github.rmannibucau.cdi.configuration.ConfigurationException;
 import com.github.rmannibucau.cdi.configuration.model.ConfigBean;
 import com.github.rmannibucau.cdi.configuration.xml.handlers.NamespaceHandlerSupport;
-import com.github.rmannibucau.dynamic.DynamicBean;
+import com.github.rmannibucau.dynamic.factory.DynamicBean;
 import org.xml.sax.Attributes;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 
 public class DynamicHandler extends NamespaceHandlerSupport {
-    private static final Collection<Object> INSTANCES = new ArrayList<Object>();
-
     @Override
     public String supportedUri() {
         return "dynamic";
@@ -24,7 +20,7 @@ public class DynamicHandler extends NamespaceHandlerSupport {
         final String api = attributes.getValue("api");
         final ConfigBean bean = new ConfigBean(localName, api,
                                                 attributes.getValue("scope"), attributes.getValue("qualifier"),
-                                                DynamicFactory.class.getName(), "create", null, null, false);
+                                                DynamicFactory.class.getName(), "create", null, "destroy", false);
 
         bean.getDirectAttributes().put("api", api);
 
@@ -41,37 +37,31 @@ public class DynamicHandler extends NamespaceHandlerSupport {
         return bean;
     }
 
-    public static void cleanup() {
-        for (final Object o : INSTANCES) {
-            try {
-                Closeable.class.cast(o).close();
-            } catch (final IOException e) {
-                // no-op
-            }
-        }
-    }
-
     public static class DynamicFactory {
         private String api;
         private String path;
         private int timeout = -1;
+        private Object instance;
 
         public Object create() {
             try {
                 final Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(api);
-                if (path == null) { // default
+                if (path == null || path.isEmpty()) { // default
                     path = clazz.getName().replace(".", "/") + ".groovy";
                 }
 
-                final Object o = DynamicBean.newDynamicBean(clazz, path, timeout, new CdiFactory());
-
-                synchronized (INSTANCES) { // TODO: will only work for app scoped beans
-                    INSTANCES.add(o);
-                }
-
-                return o;
+                instance = DynamicBean.newDynamicBean(clazz, path, timeout, new CdiFactory());
+                return instance;
             } catch (final Exception e) {
                 throw new ConfigurationException(e);
+            }
+        }
+
+        public void destroy() {
+            try {
+                Closeable.class.cast(instance).close();
+            } catch (final IOException e) {
+                // no-op
             }
         }
     }

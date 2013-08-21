@@ -1,6 +1,6 @@
-package com.github.rmannibucau.dynamic.configuration;
+package com.github.rmannibucau.dynamic.extension;
 
-import com.github.rmannibucau.dynamic.InstanceFactory;
+import com.github.rmannibucau.dynamic.factory.InstanceFactory;
 import org.apache.deltaspike.core.api.provider.BeanManagerProvider;
 
 import javax.enterprise.context.spi.CreationalContext;
@@ -22,7 +22,7 @@ public class CdiFactory implements InstanceFactory {
     }
 
     @Override
-    public void destroyInstance(InstanceHolder instance) {
+    public void destroyInstance(final InstanceHolder instance) {
         CdiInstanceHolder.class.cast(instance).destroy();
     }
 
