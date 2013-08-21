@@ -2,6 +2,7 @@ package com.github.rmannibucau.test.dynamic;
 
 import com.github.rmannibucau.cdi.configuration.LightConfigurationExtension;
 import com.github.rmannibucau.cdi.configuration.xml.handlers.NamespaceHandler;
+import com.github.rmannibucau.dynamic.configuration.DynamicCdiBeanExtension;
 import com.github.rmannibucau.dynamic.configuration.DynamicHandler;
 import org.apache.deltaspike.core.api.provider.BeanProvider;
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -14,6 +15,7 @@ import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import javax.enterprise.inject.spi.Extension;
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -38,6 +40,7 @@ public class CdiDynamicBeanTest {
         return ShrinkWrap.create(WebArchive.class, "config.war")
                 .addPackages(true, "com.github.rmannibucau.dynamic")
                 .addAsServiceProvider(NamespaceHandler.class, DynamicHandler.class)
+                .addAsServiceProvider(Extension.class, DynamicCdiBeanExtension.class)
                 .addAsWebInfResource(EmptyAsset.INSTANCE, "beans.xml")
                 .addClass(ABean.class)
                 .addAsWebInfResource(new StringAsset("<cdi-beans xmlns:dynamic=\"cdi://dynamic\">" +

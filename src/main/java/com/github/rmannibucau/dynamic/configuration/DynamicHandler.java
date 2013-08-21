@@ -6,7 +6,14 @@ import com.github.rmannibucau.cdi.configuration.xml.handlers.NamespaceHandlerSup
 import com.github.rmannibucau.dynamic.DynamicBean;
 import org.xml.sax.Attributes;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+
 public class DynamicHandler extends NamespaceHandlerSupport {
+    private static final Collection<Object> INSTANCES = new ArrayList<Object>();
+
     @Override
     public String supportedUri() {
         return "dynamic";
@@ -34,6 +41,16 @@ public class DynamicHandler extends NamespaceHandlerSupport {
         return bean;
     }
 
+    public static void cleanup() {
+        for (final Object o : INSTANCES) {
+            try {
+                Closeable.class.cast(o).close();
+            } catch (final IOException e) {
+                // no-op
+            }
+        }
+    }
+
     public static class DynamicFactory {
         private String api;
         private String path;
@@ -41,7 +58,18 @@ public class DynamicHandler extends NamespaceHandlerSupport {
 
         public Object create() {
             try {
-                return DynamicBean.newDynamicBean(Thread.currentThread().getContextClassLoader().loadClass(api), path, timeout, new CdiFactory());
+                final Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(api);
+                if (path == null) { // default
+                    path = clazz.getName().replace(".", "/") + ".groovy";
+                }
+
+                final Object o = DynamicBean.newDynamicBean(clazz, path, timeout, new CdiFactory());
+
+                synchronized (INSTANCES) { // TODO: will only work for app scoped beans
+                    INSTANCES.add(o);
+                }
+
+                return o;
             } catch (final Exception e) {
                 throw new ConfigurationException(e);
             }
